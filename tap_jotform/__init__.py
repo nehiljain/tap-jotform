@@ -157,6 +157,13 @@ def do_sync(config, state, catalog):
   # get all the users
   # get all the forms from api
 
+  for form_id in form_ids:
+    logger.info(F"Starting sync of submissions for form {form_id}")
+    for stream in catalog['streams']:
+            stream_id = stream['tap_stream_id']
+            stream_schema = stream['schema']
+            mdata = stream['metadata']
+
   # get all the submissions for all the forms
   # get all the questions for all the forms
 
