@@ -1,0 +1,22 @@
+{
+  "bookmarks": {
+    "forms": {
+      "form_id1": {
+        "questions": {
+          "id": "asdfb2314"
+        },
+        "submissions": {
+          "id": "submission111"
+        }
+      },
+      "form_id2": {
+        "questions": {
+          "id": "q2"
+        },
+        "submissions": {
+          "id": "submission555"
+        }
+      }
+    }
+  }
+}
