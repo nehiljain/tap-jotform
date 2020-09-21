@@ -144,35 +144,23 @@ def get_all_questions(schema, form_id, state, mdata):
   #todo: Needs to be a full table replication and not incremental. Change implementation accordingly
   https://hipaa-api.jotform.com/form/{form_id}/questions
   '''
-  query_params = {}
-  key_prop = KEY_PROPERTIES['questions'][0]
-  query_params['orderby'] = key_prop
-  bookmark = get_bookmark(state, form_id, "questions", key_prop)
-  if bookmark:
-    query_params["filter"] = json.dumps({f"{key_prop}:gt": bookmark})
-
   with metrics.record_counter('questions') as counter:
     for response in authed_get_all_pages(
       'questions',
       f'https://hipaa-api.jotform.com/form/{form_id}/questions',
-      query_params=query_params,
+      query_params=None
     ):
-      import ipdb; ipdb.set_trace()
       questions = sorted([(q_key, q_value)
                           for q_key, q_value in
                           response.json().get('content').items()],
                           key=lambda x:int(x[0]))
       extraction_time = singer.utils.now()
-      import pprint
-      pp = pprint.PrettyPrinter(indent=2)
-      pp.pprint(questions)
-      pp.pprint(schema)
       for qid, q_obj in questions:
         with singer.Transformer() as transformer:
           record = transformer.transform(q_obj, schema, metadata=metadata.to_map(mdata))
         singer.write_record('questions', record, time_extracted=extraction_time )
 
-        singer.write_bookmark(state, form_id, 'questions', {key_prop: q_obj[key_prop]})
+        # singer.write_bookmark(state, form_id, 'questions', {key_prop: q_obj[key_prop]})
         counter.increment()
 
   return state
@@ -198,10 +186,6 @@ def get_all_submissions(schema, form_id, state, mdata):
     ):
       submissions = response.json()
       extraction_time = singer.utils.now()
-      import pprint
-      pp = pprint.PrettyPrinter(indent=2)
-      pp.pprint(submissions)
-      pp.pprint(schema)
 
       for submission in reversed(submissions.get('content')):
         with singer.Transformer() as transformer:
@@ -260,9 +244,6 @@ def main():
         do_discover()
     else:
         catalog = args.properties if args.properties else get_catalog()
-        import pprint
-        pp = pprint.PrettyPrinter(indent=2)
-        pp.pprint(catalog)
         do_sync(args.config, args.state, catalog)
 
 
