@@ -20,7 +20,7 @@ SESSION = requests.Session()
 LOGGER = singer.get_logger()
 
 KEY_PROPERTIES = {
-  'submission': ['id']
+  'submissions': ['created_at']
 }
 
 # need to move inside sync
@@ -29,7 +29,7 @@ URL = "https://hipaa-api.jotform.com/"
 
 # need to be converted to clients
 ENDPOINTS = {
-  "forms": "user/forms",
+  "forms": "/user/forms",
   "submissions": "/form/{form_id}/submissions"
 }
 
@@ -40,21 +40,39 @@ class AuthException(Exception):
 class NotFoundException(Exception):
   pass
 
-def translate_state(state, catalog, form_id):
+def translate_state(state, catalog, form_ids):
   """
   state looks like:
     {
       "bookmarks": {
         "submissions": {
-          "id": 1234412
+          "created_at": 1234412
         }
       }
     }
+    This takes existing states and forms and makes sure that the new state has all the forms and bookmarks from existing state
   """
-  pass
+  nested_dict = lambda: collections.defaultdict(nested_dict)
+  new_state = nested_dict()
+
+  for stream in catalog['streams']:
+    stream_name = stream['tap_stream_id']
+    for form_id in form_ids:
+      # TODO: check the merging of old state with new forms doesnt end up deleting the old state in lieu of completely fresh state
+      if bookmarks.get_bookmark(state, form_id, stream_name):
+        return state
+
+      incremental_property = KEY_PROPERTIES[stream_name][0]
+      if bookmarks.get_bookmark(state, stream_name, incremental_property):
+        new_state['bookmarks'][form_id][stream_name][incremental_property] = bookarks.get_bookmark(state, stream_name, incremental_property)
+
+  return new_state
 
 def get_bookmark(state, form_id, stream_name, bookmark_key):
-  pass
+  form_stream_dict = bookmarks.get_bookmark(state, form_id, stream_name)
+  if form_stream_dict:
+      return form_stream_dict.get(bookmark_key)
+  return None
 
 
 def authed_get(source, url, query_params=None):
@@ -69,14 +87,16 @@ def authed_get(source, url, query_params=None):
 
 def authed_get_all_pages(source, url, query_params):
   offset, limit = 0, 20
-  while True:
+  last_page = False
+  while not last_page:
     resp = authed_get(source, url, query_params)
     resp.raise_for_status()
     yield resp
-    query_params['offset'] = query_params['offset'] + limit
+    result_set = resp.json().get('resultSet')
+    if result_set.get('offset', 0) + result_set.get('limit', limit) > result_set.get('count'):
+      last_page = True
+    query_params['offset'] = query_params.get('offset', offset) + limit
     query_params['limit'] = limit
-
-
 
 def get_abs_path(path):
     return os.path.join(os.path.dirname(os.path.realpath(__file__)), path)
@@ -115,14 +135,20 @@ def get_catalog():
 
     return {'streams': streams}
 
+def get_all_questions(schema, form_id, state, mdata):
+  pass
+
 def get_all_submissions(schema, form_id, state, mdata):
   '''
   https://hipaa-api.jotform.com/form/{form_id}/submissions
   '''
   query_params = {}
-  bookmark = get_bookmark(state, form_id, "submissions", "id")
+
+  key_prop = KEY_PROPERTIES['submissions'][0]
+  query_params['orderby'] = key_prop
+  bookmark = get_bookmark(state, form_id, "submissions", key_prop)
   if bookmark:
-    query_params["id:gt"] = bookmark
+    query_params["filter"] = json.dumps({f"{key_prop}:gt": bookmark})
 
   with metrics.record_counter('submissions') as counter:
     for response in authed_get_all_pages(
@@ -132,41 +158,58 @@ def get_all_submissions(schema, form_id, state, mdata):
     ):
       submissions = response.json()
       extraction_time = singer.utils.now()
-      for submission in submissions.get('content'):
-        # Transform the event
+      import pprint
+      pp = pprint.PrettyPrinter(indent=2)
+      pp.pprint(submissions)
+      pp.pprint(schema)
+
+      for submission in reversed(submissions.get('content')):
         with singer.Transformer() as transformer:
-                    record = transformer.transform(submission, schema, metadata=metadata.to_map(mdata))
+          record = transformer.transform(submission, schema, metadata=metadata.to_map(mdata))
         singer.write_record('submissions', record, time_extracted=extraction_time )
-        singer.write_bookmark(state, form_id, 'submissions', {'id': submissions['id']})
+
+        singer.write_bookmark(state, form_id, 'submissions', {key_prop: submission[key_prop]})
         counter.increment()
 
   return state
+
+def get_all_form_ids():
+  for response in authed_get_all_pages(
+      'forms',
+      f'https://hipaa-api.jotform.com/user/forms',
+      query_params=None,
+    ):
+    forms = response.json().get('content')
+    return (form.get('id') for form in forms)
+
+SYNC_FUNCTIONS = {
+    'submissions': get_all_submissions,
+    'question': get_all_questions
+}
 
 def do_sync(config, state, catalog):
   headers = {'APIKEY': config['api_key']}
   SESSION.headers.update(headers)
 
-  # get selected streams, make sure stream dependencies are met
   selected_stream_ids = get_selected_streams(catalog)
-  print(selected_stream_ids)
-  import ipdb; ipdb.set_trace()
+  form_ids = list(get_all_form_ids())
 
-  state = translate_state(state, catalog)
+  state = translate_state(state, catalog, form_ids)
   singer.write_state(state)
 
-  # get all the users
-  # get all the forms from api
 
   for form_id in form_ids:
-    logger.info(F"Starting sync of submissions for form {form_id}")
+    LOGGER.info(f"Starting sync of submissions for form {form_id}")
     for stream in catalog['streams']:
-            stream_id = stream['tap_stream_id']
-            stream_schema = stream['schema']
-            mdata = stream['metadata']
+      stream_id = stream['tap_stream_id']
+      stream_schema = stream['schema']
+      mdata = stream['metadata']
 
-  # get all the submissions for all the forms
-  # get all the questions for all the forms
-
+      if stream_id in selected_stream_ids:
+        singer.write_schema(stream_id, stream_schema, stream['key_properties'])
+        sync_function = SYNC_FUNCTIONS[stream_id]
+        state = sync_function(stream_schema, form_id, state, mdata)
+        singer.write_state(state)
 
 
 @singer.utils.handle_top_exception(LOGGER)
@@ -177,6 +220,9 @@ def main():
         do_discover()
     else:
         catalog = args.properties if args.properties else get_catalog()
+        import pprint
+        pp = pprint.PrettyPrinter(indent=2)
+        pp.pprint(catalog)
         do_sync(args.config, args.state, catalog)
 
 

@@ -1,0 +1,59 @@
+{
+  "type": [
+    "object"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "id": {
+      "type": [
+        "integer"
+      ]
+    },
+    "form_id": {
+      "type": [
+        "integer"
+      ]
+    },
+    "new": {
+      "type": [
+        "integer"
+      ]
+    },
+    "flag": {
+      "type": [
+        "integer"
+      ]
+    },
+    "ip": {
+      "type": [
+        "null",
+        "string"
+      ]
+    },
+    "status": {
+      "type": [
+        "null",
+        "string"
+      ]
+    },
+    "created_at": {
+      "type": [
+        "null",
+        "string"
+      ],
+      "format": "date-time"
+    },
+    "updated_at": {
+      "type": [
+        "null",
+        "string"
+      ],
+      "format": "date-time"
+    },
+    "answers": {
+      "type": [
+        "object"
+      ]
+    }
+  }
+}

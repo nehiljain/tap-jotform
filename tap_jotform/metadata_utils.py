@@ -12,7 +12,6 @@ def write_metadata(mdata, values, breadcrumb):
 def populate_metadata(schema_name, schema, key_properties):
 
     mdata = metadata.new()
-    #mdata = metadata.write(mdata, (), 'forced-replication-method', KEY_PROPERTIES[schema_name])
     mdata = metadata.write(mdata, (), 'table-key-properties', key_properties[schema_name])
 
     for field_name in schema['properties'].keys():
