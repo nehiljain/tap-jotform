@@ -20,7 +20,8 @@ SESSION = requests.Session()
 LOGGER = singer.get_logger()
 
 KEY_PROPERTIES = {
-  'submissions': ['created_at']
+  'submissions': ['created_at'],
+  'questions': ['qid']
 }
 
 # need to move inside sync
@@ -93,7 +94,10 @@ def authed_get_all_pages(source, url, query_params):
     resp.raise_for_status()
     yield resp
     result_set = resp.json().get('resultSet')
-    if result_set.get('offset', 0) + result_set.get('limit', limit) > result_set.get('count'):
+    try:
+      if result_set.get('offset', 0) + result_set.get('limit', limit) > result_set.get('count'):
+        last_page = True
+    except AttributeError as ae:
       last_page = True
     query_params['offset'] = query_params.get('offset', offset) + limit
     query_params['limit'] = limit
@@ -136,7 +140,43 @@ def get_catalog():
     return {'streams': streams}
 
 def get_all_questions(schema, form_id, state, mdata):
-  pass
+  '''
+  #todo: Needs to be a full table replication and not incremental. Change implementation accordingly
+  https://hipaa-api.jotform.com/form/{form_id}/questions
+  '''
+  query_params = {}
+  key_prop = KEY_PROPERTIES['questions'][0]
+  query_params['orderby'] = key_prop
+  bookmark = get_bookmark(state, form_id, "questions", key_prop)
+  if bookmark:
+    query_params["filter"] = json.dumps({f"{key_prop}:gt": bookmark})
+
+  with metrics.record_counter('questions') as counter:
+    for response in authed_get_all_pages(
+      'questions',
+      f'https://hipaa-api.jotform.com/form/{form_id}/questions',
+      query_params=query_params,
+    ):
+      import ipdb; ipdb.set_trace()
+      questions = sorted([(q_key, q_value)
+                          for q_key, q_value in
+                          response.json().get('content').items()],
+                          key=lambda x:int(x[0]))
+      extraction_time = singer.utils.now()
+      import pprint
+      pp = pprint.PrettyPrinter(indent=2)
+      pp.pprint(questions)
+      pp.pprint(schema)
+      for qid, q_obj in questions:
+        with singer.Transformer() as transformer:
+          record = transformer.transform(q_obj, schema, metadata=metadata.to_map(mdata))
+        singer.write_record('questions', record, time_extracted=extraction_time )
+
+        singer.write_bookmark(state, form_id, 'questions', {key_prop: q_obj[key_prop]})
+        counter.increment()
+
+  return state
+
 
 def get_all_submissions(schema, form_id, state, mdata):
   '''
@@ -184,7 +224,7 @@ def get_all_form_ids():
 
 SYNC_FUNCTIONS = {
     'submissions': get_all_submissions,
-    'question': get_all_questions
+    'questions': get_all_questions
 }
 
 def do_sync(config, state, catalog):
