@@ -21,7 +21,8 @@ LOGGER = singer.get_logger()
 
 KEY_PROPERTIES = {
   'submissions': ['created_at'],
-  'questions': ['qid']
+  'questions': ['qid'],
+  'forms': ['id']
 }
 
 # need to move inside sync
@@ -86,21 +87,25 @@ def authed_get(source, url, query_params=None):
     timer.tags[metrics.Tag.http_status_code] = resp.status_code
     return resp
 
-def authed_get_all_pages(source, url, query_params):
+def authed_get_all_pages(source, url, query_params=None):
+  query_params = query_params or {}
   offset, limit = 0, 20
   last_page = False
   while not last_page:
     resp = authed_get(source, url, query_params)
     resp.raise_for_status()
     yield resp
+
     result_set = resp.json().get('resultSet')
     try:
-      if result_set.get('offset', 0) + result_set.get('limit', limit) > result_set.get('count'):
+      if result_set.get('limit', limit) > result_set.get('count'):
         last_page = True
     except AttributeError as ae:
       last_page = True
     query_params['offset'] = query_params.get('offset', offset) + limit
     query_params['limit'] = limit
+
+
 
 def get_abs_path(path):
     return os.path.join(os.path.dirname(os.path.realpath(__file__)), path)
@@ -156,11 +161,15 @@ def get_all_questions(schema, form_id, state, mdata):
                           key=lambda x:int(x[0]))
       extraction_time = singer.utils.now()
       for qid, q_obj in questions:
+        q_obj['form_id'] = form_id
         with singer.Transformer() as transformer:
-          record = transformer.transform(q_obj, schema, metadata=metadata.to_map(mdata))
+          try:
+            record = transformer.transform(q_obj, schema, metadata=metadata.to_map(mdata))
+          except Exception as e:
+            # LOGGER.exception(f'{form_id} and {q_id} data was not transformed due to error')
+            continue
         singer.write_record('questions', record, time_extracted=extraction_time )
 
-        # singer.write_bookmark(state, form_id, 'questions', {key_prop: q_obj[key_prop]})
         counter.increment()
 
   return state
@@ -170,6 +179,7 @@ def get_all_submissions(schema, form_id, state, mdata):
   '''
   https://hipaa-api.jotform.com/form/{form_id}/submissions
   '''
+  import ipdb; ipdb.set_trace()
   query_params = {}
 
   key_prop = KEY_PROPERTIES['submissions'][0]
@@ -204,11 +214,34 @@ def get_all_form_ids():
       query_params=None,
     ):
     forms = response.json().get('content')
-    return (form.get('id') for form in forms)
+    for form in forms:
+      yield form['id']
+
+def get_all_forms(schema, form_id, state, mdata):
+
+  key_prop = KEY_PROPERTIES['forms'][0]
+  bookmark = get_bookmark(state, form_id, "forms", key_prop)
+  with metrics.record_counter('forms') as counter:
+    for response in authed_get_all_pages(
+        'forms',
+        f'https://hipaa-api.jotform.com/form/{form_id}',
+        query_params=None,
+      ):
+      form = response.json().get('content')
+      extraction_time = singer.utils.now()
+      with singer.Transformer() as transformer:
+        record = transformer.transform(form, schema, metadata=metadata.to_map(mdata))
+      singer.write_record('forms', record, time_extracted=extraction_time )
+
+      singer.write_bookmark(state, form_id, 'forms', {key_prop: form[key_prop]})
+      counter.increment()
+
+    return state
 
 SYNC_FUNCTIONS = {
     'submissions': get_all_submissions,
-    'questions': get_all_questions
+    'questions': get_all_questions,
+    'forms': get_all_forms
 }
 
 def do_sync(config, state, catalog):
@@ -220,7 +253,6 @@ def do_sync(config, state, catalog):
 
   state = translate_state(state, catalog, form_ids)
   singer.write_state(state)
-
 
   for form_id in form_ids:
     LOGGER.info(f"Starting sync of submissions for form {form_id}")

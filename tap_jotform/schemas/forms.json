@@ -6,34 +6,35 @@
   "properties": {
     "id": {
       "type": [
-        "integer"
+        "string"
       ]
     },
-    "form_id": {
+    "username": {
       "type": [
         "string"
       ]
     },
-    "new": {
+    "title": {
       "type": [
-        "integer"
+        "string",
+        "null"
       ]
     },
-    "flag": {
+    "url": {
       "type": [
-        "integer"
+        "string",
+        "null"
       ]
     },
-    "ip": {
+    "height": {
       "type": [
-        "null",
         "string"
       ]
     },
+
     "status": {
       "type": [
-        "null",
-        "string"
+        "string", "null"
       ]
     },
     "created_at": {
@@ -50,10 +51,22 @@
       ],
       "format": "date-time"
     },
-    "answers": {
+    "new": {
       "type": [
-        "object"
+        "integer", "null"
+      ]
+    },
+    "count": {
+      "type": [
+        "integer", "null"
+      ]
+    },
+    "type": {
+      "type": [
+        "string", "null"
       ]
     }
+
   }
 }
+

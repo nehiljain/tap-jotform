@@ -4,6 +4,11 @@
   ],
   "additionalProperties": false,
   "properties": {
+    "form_id": {
+      "type": [
+        "string"
+      ]
+    },
     "qid": {
       "type": [
         "integer"
