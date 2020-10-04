@@ -5,6 +5,7 @@ import json
 import collections
 import requests
 import singer
+import datetime
 from singer import utils, metadata
 import singer.bookmarks as bookmarks
 from singer.catalog import Catalog, CatalogEntry
@@ -179,7 +180,6 @@ def get_all_submissions(schema, form_id, state, mdata):
   '''
   https://hipaa-api.jotform.com/form/{form_id}/submissions
   '''
-  import ipdb; ipdb.set_trace()
   query_params = {}
 
   key_prop = KEY_PROPERTIES['submissions'][0]
@@ -189,6 +189,7 @@ def get_all_submissions(schema, form_id, state, mdata):
     query_params["filter"] = json.dumps({f"{key_prop}:gt": bookmark})
 
   with metrics.record_counter('submissions') as counter:
+    max_submission_creation_date = datetime.datetime.min
     for response in authed_get_all_pages(
       'submissions',
       f'https://hipaa-api.jotform.com/form/{form_id}/submissions',
@@ -196,13 +197,13 @@ def get_all_submissions(schema, form_id, state, mdata):
     ):
       submissions = response.json()
       extraction_time = singer.utils.now()
-
       for submission in reversed(submissions.get('content')):
         with singer.Transformer() as transformer:
           record = transformer.transform(submission, schema, metadata=metadata.to_map(mdata))
         singer.write_record('submissions', record, time_extracted=extraction_time )
-
-        singer.write_bookmark(state, form_id, 'submissions', {key_prop: submission[key_prop]})
+        max_submission_creation_date = max(datetime.datetime.strptime(submission[key_prop], '%Y-%m-%d %H:%M:%S'),
+                                           max_submission_creation_date)
+        singer.write_bookmark(state, form_id, 'submissions', {key_prop: max_submission_creation_date.strftime("%Y-%m-%d %H:%M:%S")})
         counter.increment()
 
   return state
