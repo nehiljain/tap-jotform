@@ -1,0 +1,149 @@
+{
+  "type": [
+    "object"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "form_id": {
+      "type": [
+        "string"
+      ]
+    },
+    "qid": {
+      "type": [
+        "integer"
+      ]
+    },
+    "hint": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "text": {
+      "type": [
+        "string"
+      ]
+    },
+
+    "readonly": {
+      "type": [
+        "string", "null"
+      ]
+    },
+    "validation": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "cols": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+
+    "rows": {
+      "type": [
+        "integer",
+        "null"
+      ]
+    },
+
+    "entryLimit": {
+      "type": [
+        "string", "null"
+      ]
+    },
+
+    "encryption": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+
+    "required": {
+      "type": [
+        "string"
+      ]
+    },
+
+    "shrink": {
+      "type": [
+        "string"
+      ]
+    },
+    "size": {
+      "type": [
+        "integer"
+      ]
+    },
+
+    "labelAlign": {
+      "type": [
+        "string"
+      ]
+    },
+
+    "type": {
+      "type": [
+        "string"
+      ]
+    },
+    "print": {
+      "type": [
+        "string"
+      ]
+    },
+
+    "prefix": {
+      "type": [
+        "string"
+      ]
+    },
+    "order": {
+      "type": [
+        "integer"
+      ]
+    },
+    "name": {
+      "type": [
+        "string"
+      ]
+    },
+    "clear": {
+      "type": [
+        "string"
+      ]
+    },
+    "buttonStyle": {
+      "type": [
+        "string"
+      ]
+    },
+    "sublabels": {
+      "type": [
+        "object"
+      ]
+    },
+
+    "suffix": {
+      "type": [
+        "object"
+      ]
+    },
+    "buttonAlign": {
+      "type": [
+        "string"
+      ]
+    },
+    "subHeader": {
+      "type": [
+        "string", "null"
+      ]
+    }
+  }
+}
+

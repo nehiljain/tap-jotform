@@ -10,16 +10,12 @@ setup(
     classifiers=["Programming Language :: Python :: 3 :: Only"],
     py_modules=["tap_jotform"],
     install_requires=[
-        "singer-python>=5.0.12",
-        "tenacity==6.2.0",
+        "singer-python==5.9.0",
         "requests==2.24.0",
-        "pendulum==1.2.0"
     ],
     extras_require={
         'dev': [
-            'ipdb==0.13.3',
-            'pylint==2.6.0',
-            'pytest'
+            'ipdb==0.13.3'
         ]
     },
     entry_points="""

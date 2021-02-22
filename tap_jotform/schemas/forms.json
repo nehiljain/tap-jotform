@@ -6,34 +6,35 @@
   "properties": {
     "id": {
       "type": [
-        "integer"
-      ]
-    },
-    "form_id": {
-      "type": [
-        "integer"
-      ]
-    },
-    "new": {
-      "type": [
-        "integer"
-      ]
-    },
-    "flag": {
-      "type": [
-        "integer"
-      ]
-    },
-    "ip": {
-      "type": [
-        "null",
         "string"
       ]
     },
+    "username": {
+      "type": [
+        "string"
+      ]
+    },
+    "title": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "url": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "height": {
+      "type": [
+        "string"
+      ]
+    },
+
     "status": {
       "type": [
-        "null",
-        "string"
+        "string", "null"
       ]
     },
     "created_at": {
@@ -50,10 +51,22 @@
       ],
       "format": "date-time"
     },
-    "answers": {
+    "new": {
       "type": [
-        "object"
+        "integer", "null"
+      ]
+    },
+    "count": {
+      "type": [
+        "integer", "null"
+      ]
+    },
+    "type": {
+      "type": [
+        "string", "null"
       ]
     }
+
   }
 }
+

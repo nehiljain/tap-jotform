@@ -104,3 +104,5 @@ state.json
 
 .prod_config.json
 *_config.json
+
+.venv/

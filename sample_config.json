@@ -1,5 +1,6 @@
 {
-  "username": "my_username",
-  "password": "my_password",
-  "start_date": "2017-01-01T00:00:00Z"
+  "api_key": "key",
+  "is_hipaa_safe_mode_on": "1",
+  "start_date": "2017-01-01T00:00:00Z",
+  "form_id": "123"
 }
